@@ -17,6 +17,8 @@ Q* = (FC₂ − FC₁) / (VC₁ − VC₂)
 | `break_even_envelope.py` | Python implementation with a command line interface. |
 | `test_break_even.py` | Tests against brute force on 5,000 random cases. |
 | `example.csv` | Fall-Line, Inc. example data. |
+| `WHITEPAPER.md` / `WHITEPAPER.pdf` | White paper: method, correctness, verification, references. |
+| `tools/build_whitepaper_pdf.py` | Rebuilds the PDF from the Markdown source. |
 
 ## Web app
 
@@ -105,6 +107,14 @@ Result:
 
 </div>
 
+## White paper
+
+[WHITEPAPER.md](WHITEPAPER.md) ([PDF](WHITEPAPER.pdf)) explains the method, links the problem to parametric programming and computational geometry, gives a correctness argument, and reports verification against brute force.
+
+## How to cite
+
+Assaf, R. (2026). *Locational break-even analysis without plotting: A lower-envelope algorithm and an open-source bilingual teaching tool* (White paper, Version 1.0). An-Najah National University. https://github.com/ramizassaf/break-even-location-finder
+
 ## Author
 
-Ramiz, Industrial Engineering Department, An-Najah National University.
+Ramiz Assaf, Department of Industrial Engineering, An-Najah National University.
