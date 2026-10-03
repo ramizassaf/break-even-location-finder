@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Break-even location finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF2EC; --panel:#FBFCFA; --ink:#1C2B3A; --muted:#5A6A76; --rule:#C5D3C2; --grid:#D9E4D6;
+  --accent:#1F5FA8; --accent-ink:#FFFFFF; --error:#A3322A; --field:#FFFFFF;
+  --c0:#2457B8; --c1:#B03045; --c2:#24804F; --c3:#9A6200; --c4:#6B3FB4; --c5:#0B7A85; --c6:#B8306F; --c7:#55650A;
+  --font:"Instrument Sans", "IBM Plex Sans Arabic", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#12181C; --panel:#192127; --ink:#E3EAE5; --muted:#94A4AE; --rule:#33434C; --grid:#222D33;
+    --accent:#7DB0EC; --accent-ink:#0E1A26; --error:#F08A80; --field:#11171B;
+    --c0:#7FA9F2; --c1:#F0849A; --c2:#6CCB95; --c3:#E5B055; --c4:#B596F2; --c5:#5DCCD6; --c6:#EE88B9; --c7:#B9CC5A;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#12181C; --panel:#192127; --ink:#E3EAE5; --muted:#94A4AE; --rule:#33434C; --grid:#222D33;
+  --accent:#7DB0EC; --accent-ink:#0E1A26; --error:#F08A80; --field:#11171B;
+  --c0:#7FA9F2; --c1:#F0849A; --c2:#6CCB95; --c3:#E5B055; --c4:#B596F2; --c5:#5DCCD6; --c6:#EE88B9; --c7:#B9CC5A;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+html[lang="ar"]{--font:"IBM Plex Sans Arabic", "Instrument Sans", "Segoe UI", system-ui, Tahoma, Arial, sans-serif;}
+*,*::before,*::after{box-sizing:inherit;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 48px;}
+header{display:flex;gap:20px;justify-content:space-between;align-items:flex-start;margin-bottom:22px;}
+header .intro{max-width:70ch;}
+h1{font-size:clamp(1.6rem,3.2vw,2.3rem);line-height:1.2;margin:0 0 8px;font-weight:700;letter-spacing:-0.015em;}
+html[lang="ar"] h1{letter-spacing:0;}
+header p{margin:0;color:var(--muted);}
+.formula{display:inline-block;margin-top:10px;padding:4px 10px;border-inline-start:3px solid var(--accent);background:var(--panel);font-size:.95rem;}
+.lang{flex:none;font-weight:600;}
+h2{font-size:1.1rem;margin:0 0 12px;font-weight:600;}
+.grid{display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:20px;align-items:start;}
+@media (max-width:860px){.grid{grid-template-columns:1fr;}}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:18px;min-width:0;}
+.settings{display:flex;gap:12px;margin-bottom:14px;}
+.settings label{flex:1;font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;}
+input{font:inherit;font-size:.95rem;color:var(--ink);background:var(--field);border:1px solid var(--rule);border-radius:4px;padding:6px 8px;width:100%;min-width:0;}
+input.numin{direction:ltr;text-align:end;}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+input.bad{border-color:var(--error);}
+table{border-collapse:collapse;width:100%;}
+.inputs th{font-size:.8rem;font-weight:500;color:var(--muted);text-align:start;padding:0 4px 6px;}
+.inputs td{padding:3px 4px;vertical-align:middle;}
+.inputs .cname{width:40%;} .inputs .cfc{width:32%;} .inputs .cvc{width:22%;}
+.inputs input[data-f="name"]{min-width:96px;}
+.inputs td:first-child,.inputs th:first-child{padding-inline-start:0;}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:3px;flex:none;}
+.namecell{display:flex;align-items:center;gap:6px;}
+button{font:inherit;font-size:.9rem;cursor:pointer;border-radius:4px;padding:7px 12px;border:1px solid var(--rule);background:transparent;color:var(--ink);}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;}
+button.x{padding:4px 8px;line-height:1;color:var(--muted);}
+button.x:hover{color:var(--error);border-color:var(--error);}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.err{color:var(--error);font-size:.88rem;margin:10px 0 0;}
+.chartbox{position:relative;}
+svg{display:block;width:100%;height:auto;touch-action:none;direction:ltr;}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--rule);border-radius:5px;padding:8px 10px;font-size:.82rem;
+  box-shadow:0 4px 14px rgba(20,30,40,.12);min-width:180px;display:none;z-index:2;}
+.tip .row{display:flex;justify-content:space-between;gap:12px;align-items:center;}
+.tip .row.best{font-weight:700;}
+.tip .q{font-weight:600;margin-bottom:4px;}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:.88rem;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend .never{color:var(--muted);text-decoration:line-through;}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+@media (max-width:860px){.results{grid-template-columns:1fr;} header{flex-direction:column-reverse;}}
+.scroll{overflow-x:auto;}
+.out th,.out td{text-align:start;padding:7px 8px;border-bottom:1px solid var(--rule);font-size:.93rem;white-space:nowrap;}
+.out th{font-weight:500;color:var(--muted);font-size:.82rem;}
+.out td.num,.out th.num{text-align:end;}
+.qstar{margin:14px 0 0;padding:0;list-style:none;}
+.qstar li{padding:8px 0;border-bottom:1px solid var(--rule);font-size:.93rem;}
+.never-note{margin:12px 0 0;font-size:.93rem;color:var(--muted);}
+ol.trace{margin:0;padding-inline-start:1.4em;font-size:.92rem;}
+ol.trace li{padding:4px 0;}
+ol.trace .op{font-weight:600;}
+ol.trace .op.pop{color:var(--error);}
+ol.trace .expr{display:block;unicode-bidi:isolate;text-align:left;color:var(--ink);}
+html[dir="rtl"] ol.trace .expr{text-align:right;}
+ol.trace .stack{color:var(--muted);font-size:.85rem;display:block;}
+.sub{color:var(--muted);font-size:.88rem;margin:-6px 0 12px;}
+footer{margin-top:24px;font-size:.85rem;color:var(--muted);}
+footer a{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="intro">
+      <h1 data-i="title"></h1>
+      <p data-i="intro"></p>
+      <span class="formula" dir="ltr">TC = FC + VC × Q &nbsp;&nbsp; Q* = (FC₂ − FC₁) / (VC₁ − VC₂)</span>
+    </div>
+    <button class="lang" id="lang" lang="ar"></button>
+  </header>
+
+  <div class="grid">
+    <section class="panel" data-ia="inputsLabel">
+      <h2 data-i="alternatives"></h2>
+      <div class="settings">
+        <label><span data-i="currency"></span><input id="cur" value="$" maxlength="6"></label>
+        <label><span data-i="unit"></span><input id="unit" value="pairs" maxlength="20"></label>
+      </div>
+      <div class="scroll">
+        <table class="inputs">
+          <thead><tr><th class="cname" data-i="name"></th><th class="cfc" data-i="fc"></th><th class="cvc" data-i="vc"></th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="primary" id="add" data-i="add"></button>
+        <button id="example" data-i="example"></button>
+        <button id="clear" data-i="clear"></button>
+      </div>
+      <p class="err" id="err" role="alert"></p>
+    </section>
+
+    <section class="panel" data-ia="chartTitle">
+      <h2 data-i="chartTitle"></h2>
+      <p class="sub" data-i="chartSub"></p>
+      <div class="chartbox" id="chartbox">
+        <svg id="chart" viewBox="0 0 720 460" role="img"></svg>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+  </div>
+
+  <div class="results">
+    <section class="panel" data-ia="bestTitle">
+      <h2 data-i="bestTitle"></h2>
+      <div class="scroll"><table class="out" id="ranges"></table></div>
+      <ul class="qstar" id="qstar"></ul>
+      <p class="never-note" id="never"></p>
+    </section>
+    <section class="panel" data-ia="stepsTitle">
+      <h2 data-i="stepsTitle"></h2>
+      <p class="sub" data-i="stepsSub"></p>
+      <ol class="trace" id="trace"></ol>
+    </section>
+  </div>
+  <footer data-i="footer"></footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const I18N = {
+    en: {
+      langBtn: "العربية",
+      title: "Break-even location finder",
+      intro: "Enter the fixed and variable cost of each alternative. The tool finds the cheapest alternative at every volume and the break-even quantities between them.",
+      inputsLabel: "Inputs",
+      alternatives: "Alternatives", currency: "Currency", unit: "Volume unit", defaultUnit: "units",
+      name: "Name", fc: "Fixed cost", vc: "Variable cost", removeRow: "Remove row", altN: "Alt {n}",
+      add: "Add alternative", example: "Load example", clear: "Clear all",
+      chartTitle: "Total cost by volume",
+      chartSub: "Thick segments mark the cheapest alternative. Hover or tap the chart to compare costs at any volume.",
+      chartAria: "Total cost lines and minimal envelope",
+      axisQ: "Volume Q ({u})", axisTC: "Total cost ({c})",
+      empty: "Add at least one alternative with fixed and variable cost.",
+      errNums: "{n}: enter numbers for both fixed and variable cost.",
+      errNeg: "{n}: costs must be zero or positive.",
+      bestTitle: "Best alternative by volume", altCol: "Alternative", from: "From", to: "To", andAbove: "and above",
+      qLine: "{a} to {b}: <b>Q* = {q} {u}</b>, TC = {tc}",
+      oneAlt: "One alternative is cheapest at every volume. No break-even point.",
+      never: "Never cheapest: {list}", everyWins: "Every alternative is cheapest over some range.",
+      stepsTitle: "Algorithm steps", stepsSub: "Sort by VC from highest to lowest, then scan with a stack.",
+      opSort: "Sort", opSkip: "Skip", opRemove: "Remove", opKeep: "Keep", opAdd: "Add", opResult: "Result",
+      sortText: "By VC, highest first: {list}",
+      skipText: "{k}: same VC as {t} with FC ≥ {fc}. Never cheaper.",
+      domText: "{t}: {k} has lower VC and FC {fk} ≤ {ft}. {t} is dominated.",
+      hullRem: "{j}: {k} overtakes {i} first. {expr}",
+      hullKeep: "{j} stays. {expr}",
+      resultText: "Break-evens between neighbors: {list}",
+      stack: "Stack", tipQ: "Q = {q} {u}",
+      footer: "Locational break-even analysis. Algorithm: lower envelope of lines with a monotone stack, O(n log n).",
+      exampleUnit: "pairs"
+    },
+    ar: {
+      langBtn: "English",
+      title: "أداة تحديد الموقع بتحليل نقطة التعادل",
+      intro: "أدخل التكلفة الثابتة والتكلفة المتغيرة لكل بديل. تحدد الأداة البديل الأقل تكلفة عند كل حجم إنتاج، وكميات التعادل بين البدائل.",
+      inputsLabel: "المدخلات",
+      alternatives: "البدائل", currency: "العملة", unit: "وحدة الحجم", defaultUnit: "وحدة",
+      name: "الاسم", fc: "التكلفة الثابتة", vc: "التكلفة المتغيرة", removeRow: "حذف الصف", altN: "بديل {n}",
+      add: "إضافة بديل", example: "تحميل المثال", clear: "مسح الكل",
+      chartTitle: "التكلفة الكلية حسب الحجم",
+      chartSub: "الأجزاء العريضة تمثل البديل الأقل تكلفة. مرّر المؤشر أو انقر على الرسم لمقارنة التكاليف عند أي حجم.",
+      chartAria: "خطوط التكلفة الكلية والغلاف الأدنى",
+      axisQ: "الحجم Q ({u})", axisTC: "التكلفة الكلية ({c})",
+      empty: "أضف بديلًا واحدًا على الأقل مع التكلفة الثابتة والمتغيرة.",
+      errNums: "{n}: أدخل أرقامًا للتكلفة الثابتة والمتغيرة.",
+      errNeg: "{n}: يجب أن تكون التكاليف صفرًا أو أكثر.",
+      bestTitle: "البديل الأفضل حسب الحجم", altCol: "البديل", from: "من", to: "إلى", andAbove: "فأكثر",
+      qLine: "من {a} إلى {b}: <b><bdi dir=\"ltr\">Q* = {q}</bdi> {u}</b>، التكلفة الكلية = <bdi dir=\"ltr\">{tc}</bdi>",
+      oneAlt: "بديل واحد هو الأقل تكلفة عند جميع الأحجام. لا توجد نقطة تعادل.",
+      never: "لا يكون الأقل تكلفة أبدًا: {list}", everyWins: "كل بديل هو الأقل تكلفة ضمن مدى معين.",
+      stepsTitle: "خطوات الخوارزمية", stepsSub: "رتّب البدائل حسب التكلفة المتغيرة من الأعلى إلى الأدنى، ثم امسحها باستخدام مكدس.",
+      opSort: "ترتيب", opSkip: "تجاوز", opRemove: "حذف", opKeep: "إبقاء", opAdd: "إضافة", opResult: "النتيجة",
+      sortText: "حسب التكلفة المتغيرة، من الأعلى: {list}",
+      skipText: "{k}: نفس التكلفة المتغيرة للبديل {t} وتكلفة ثابتة ≥ <bdi dir=\"ltr\">{fc}</bdi>. لن يكون أرخص أبدًا.",
+      domText: "{t}: البديل {k} له تكلفة متغيرة أقل وتكلفة ثابتة <bdi dir=\"ltr\">{fk} ≤ {ft}</bdi>. البديل {t} مُهيمَن عليه.",
+      hullRem: "{j}: البديل {k} يتفوق على {i} أولًا. {expr}",
+      hullKeep: "يبقى {j}. {expr}",
+      resultText: "نقاط التعادل بين البدائل المتجاورة: {list}",
+      stack: "المكدس", tipQ: "Q = {q} {u}",
+      footer: "تحليل نقطة التعادل لاختيار الموقع. الخوارزمية: الغلاف الأدنى للخطوط باستخدام مكدس، بتعقيد <bdi dir=\"ltr\">O(n log n)</bdi>",
+      exampleUnit: "زوج"
+    }
+  };
+  let lang = "en";
+  const t = (k, p) => {
+    let s = (I18N[lang][k] !== undefined ? I18N[lang][k] : I18N.en[k]);
+    if (p) for (const key in p) s = s.split("{" + key + "}").join(p[key]);
+    return s;
+  };
+
+  const NCOL = 8;
+  const EXAMPLE = [
+    {name:"Aspen", fc:"8,000,000", vc:"250"},
+    {name:"Boyne City", fc:"2,400,000", vc:"130"},
+    {name:"Portland", fc:"3,400,000", vc:"90"},
+    {name:"Lake Tahoe", fc:"4,500,000", vc:"65"}
+  ];
+  let nextId = 1;
+  let rows = [];
+  const $ = id => document.getElementById(id);
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  const ltr = s => `<bdi dir="ltr">${s}</bdi>`;
+  const ltrBlock = s => `<span class="expr" dir="ltr">${s}</span>`;
+  function parseNum(s){
+    const x = String(s).replace(/[,\s\u066C]/g,"").replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660).replace(/\u066B/g,".");
+    if (x === "") return NaN;
+    const n = Number(x);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  const full = n => n.toLocaleString("en-US",{maximumFractionDigits:2});
+  function short(n){
+    const a = Math.abs(n), f = x => x.toLocaleString("en-US",{maximumFractionDigits:2});
+    if (a >= 1e9) return f(n/1e9)+"B";
+    if (a >= 1e6) return f(n/1e6)+"M";
+    if (a >= 1e3) return f(n/1e3)+"k";
+    return f(n);
+  }
+  const cur = () => $("cur").value;
+  const money = n => cur() + full(n);
+  const unit = () => $("unit").value || t("defaultUnit");
+  const color = idx => `var(--c${idx % NCOL})`;
+
+  function newRow(r){ return {id:nextId++, name:r?r.name:"", fc:r?r.fc:"", vc:r?r.vc:""}; }
+  function loadExample(){ rows = EXAMPLE.map(newRow); $("cur").value = "$"; $("unit").value = t("exampleUnit"); drawInputs(); update(); }
+
+  function applyLang(){
+    const html = document.documentElement;
+    html.lang = lang; html.dir = lang === "ar" ? "rtl" : "ltr";
+    document.title = t("title");
+    document.querySelectorAll("[data-i]").forEach(el => { el.innerHTML = t(el.dataset.i); });
+    document.querySelectorAll("[data-ia]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.ia)); });
+    const b = $("lang"); b.textContent = t("langBtn"); b.lang = lang === "ar" ? "en" : "ar";
+    $("chart").setAttribute("aria-label", t("chartAria"));
+    const u = $("unit").value;
+    if (u === I18N.en.exampleUnit || u === I18N.ar.exampleUnit) $("unit").value = t("exampleUnit");
+    drawInputs(); update();
+  }
+  $("lang").onclick = () => { lang = lang === "en" ? "ar" : "en"; applyLang(); };
+
+  function drawInputs(){
+    $("rows").innerHTML = rows.map((r,i) => `
+      <tr data-id="${r.id}">
+        <td><div class="namecell"><span class="swatch" style="background:${color(i)}"></span>
+          <input aria-label="${esc(t("name"))}" data-f="name" value="${esc(r.name)}" placeholder="${esc(t("altN",{n:i+1}))}"></div></td>
+        <td><input class="numin" aria-label="${esc(t("fc"))}" data-f="fc" inputmode="decimal" value="${esc(r.fc)}" placeholder="0"></td>
+        <td><input class="numin" aria-label="${esc(t("vc"))}" data-f="vc" inputmode="decimal" value="${esc(r.vc)}" placeholder="0"></td>
+        <td><button class="x" aria-label="${esc(t("removeRow"))}" data-rm="${r.id}">✕</button></td>
+      </tr>`).join("");
+  }
+
+  $("rows").addEventListener("input", e => {
+    const f = e.target.dataset.f; if (!f) return;
+    const id = +e.target.closest("tr").dataset.id;
+    const r = rows.find(x => x.id === id); r[f] = e.target.value; update();
+  });
+  $("rows").addEventListener("click", e => {
+    const id = e.target.dataset.rm; if (!id) return;
+    rows = rows.filter(r => r.id !== +id); drawInputs(); update();
+  });
+  $("add").onclick = () => { rows.push(newRow()); drawInputs(); update();
+    const ins = $("rows").querySelectorAll('input[data-f="name"]'); if (ins.length) ins[ins.length-1].focus(); };
+  $("example").onclick = loadExample;
+  $("clear").onclick = () => { rows = [newRow(), newRow()]; drawInputs(); update(); };
+  $("cur").addEventListener("input", update);
+  $("unit").addEventListener("input", update);
+
+  // ---------- Algorithm: lower envelope with a monotone stack ----------
+  const be = (a,b) => (b.fc - a.fc) / (a.vc - b.vc); // a has the higher VC
+  const stackStr = st => ltr("[" + st.map(s => esc(s.name)).join(", ") + "]");
+  const qExpr = (i,k,v) => `Q*(${esc(i.name)}, ${esc(k.name)}) = ${full(v)}`;
+
+  function envelope(alts){
+    const trace = [];
+    const sorted = [...alts].sort((x,y) => (y.vc - x.vc) || (x.fc - y.fc));
+    trace.push({op:"opSort", text:t("sortText",{list: sorted.map(a => `${esc(a.name)} (${ltr(full(a.vc))})`).join(lang === "ar" ? "، " : ", ")})});
+    const st = [];
+    for (const k of sorted){
+      const top = st[st.length-1];
+      if (top && k.vc === top.vc){
+        trace.push({op:"opSkip", pop:true, text:t("skipText",{k:esc(k.name), t:esc(top.name), fc:esc(money(top.fc))}), stack:stackStr(st)});
+        continue;
+      }
+      while (st.length && k.fc <= st[st.length-1].fc){
+        const r = st.pop();
+        trace.push({op:"opRemove", pop:true, text:t("domText",{t:esc(r.name), k:esc(k.name), fk:esc(money(k.fc)), ft:esc(money(r.fc))}), stack:stackStr(st)});
+      }
+      while (st.length >= 2){
+        const i = st[st.length-2], j = st[st.length-1];
+        const qik = be(i,k), qij = be(i,j);
+        if (qik <= qij){
+          st.pop();
+          trace.push({op:"opRemove", pop:true, text:t("hullRem",{j:esc(j.name), i:esc(i.name), k:esc(k.name),
+            expr: ltrBlock(qExpr(i,k,qik) + " ≤ " + qExpr(i,j,qij))}), stack:stackStr(st)});
+        } else {
+          trace.push({op:"opKeep", text:t("hullKeep",{j:esc(j.name), expr: ltrBlock(qExpr(i,k,qik) + " &gt; " + qExpr(i,j,qij))})});
+          break;
+        }
+      }
+      st.push(k);
+      trace.push({op:"opAdd", text:esc(k.name), stack:stackStr(st)});
+    }
+    const q = [];
+    for (let s=0; s<st.length-1; s++) q.push(be(st[s], st[s+1]));
+    if (q.length) trace.push({op:"opResult", text:t("resultText",{list: ltr(q.map(full).join(", "))})});
+    return {lines:st, q, trace};
+  }
+
+  // ---------- Update ----------
+  function update(){
+    const errs = [], alts = [];
+    const trs = $("rows").querySelectorAll("tr");
+    rows.forEach((r,i) => {
+      const fc = parseNum(r.fc), vc = parseNum(r.vc);
+      const blank = !r.fc.trim() && !r.vc.trim() && !r.name.trim();
+      const tr = trs[i];
+      if (tr){
+        tr.querySelector('[data-f="fc"]').classList.toggle("bad", !blank && Number.isNaN(fc));
+        tr.querySelector('[data-f="vc"]').classList.toggle("bad", !blank && Number.isNaN(vc));
+      }
+      if (blank) return;
+      const nm = r.name.trim() || t("altN",{n:i+1});
+      if (Number.isNaN(fc) || Number.isNaN(vc)) { errs.push(t("errNums",{n:nm})); return; }
+      if (fc < 0 || vc < 0) { errs.push(t("errNeg",{n:nm})); return; }
+      alts.push({id:r.id, idx:i, name:nm, fc, vc});
+    });
+    $("err").textContent = errs.join(" ");
+    if (!alts.length){
+      $("chart").innerHTML = `<text x="360" y="230" text-anchor="middle" fill="var(--muted)" font-size="15">${esc(t("empty"))}</text>`;
+      ["legend","ranges","qstar","trace"].forEach(id => $(id).innerHTML = "");
+      $("never").textContent = "";
+      return;
+    }
+    const res = envelope(alts);
+    drawChart(alts, res);
+    drawResults(alts, res);
+  }
+
+  // ---------- Chart ----------
+  function niceStep(range, count){
+    const raw = range / count, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  let chartCtx = null;
+
+  function drawChart(alts, res){
+    const W=720, H=460, L=78, R=20, T=16, B=86, pw=W-L-R, ph=H-T-B;
+    let xmax;
+    if (res.q.length) xmax = Math.max(...res.q) * 1.35;
+    else {
+      const pos = [];
+      for (const A of alts) for (const Bb of alts) if (A.vc > Bb.vc){ const q = be(A,Bb); if (q > 0) pos.push(q); }
+      xmax = pos.length ? Math.max(...pos)*1.35 : 100;
+    }
+    const xs = niceStep(xmax, 6); xmax = Math.ceil(xmax/xs)*xs;
+    let ymax = Math.max(...alts.map(a => a.fc + a.vc*xmax)); if (ymax <= 0) ymax = 1;
+    const ys = niceStep(ymax, 6); ymax = Math.ceil(ymax/ys)*ys;
+    const X = q => L + q/xmax*pw, Y = c => T + ph - c/ymax*ph;
+
+    let s = "";
+    for (let v=0; v<=xmax+1e-9; v+=xs){
+      s += `<line x1="${X(v)}" y1="${T}" x2="${X(v)}" y2="${T+ph}" stroke="var(--grid)"/>`;
+      s += `<text x="${X(v)}" y="${T+ph+18}" text-anchor="middle" font-size="12" fill="var(--muted)">${short(v)}</text>`;
+    }
+    for (let v=0; v<=ymax+1e-9; v+=ys){
+      s += `<line x1="${L}" y1="${Y(v)}" x2="${L+pw}" y2="${Y(v)}" stroke="var(--grid)"/>`;
+      s += `<text x="${L-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${short(v)}</text>`;
+    }
+    s += `<line x1="${L}" y1="${T+ph}" x2="${L+pw}" y2="${T+ph}" stroke="var(--muted)"/>`;
+    s += `<line x1="${L}" y1="${T}" x2="${L}" y2="${T+ph}" stroke="var(--muted)"/>`;
+    s += `<text x="${L+pw/2}" y="${T+ph+36}" text-anchor="middle" font-size="12.5" fill="var(--ink)">${esc(t("axisQ",{u:unit()}))}</text>`;
+    s += `<text transform="translate(16 ${T+ph/2}) rotate(-90)" text-anchor="middle" font-size="12.5" fill="var(--ink)">${esc(t("axisTC",{c:cur()}))}</text>`;
+
+    s += `<defs><clipPath id="plot"><rect x="${L}" y="${T}" width="${pw}" height="${ph}"/></clipPath></defs><g clip-path="url(#plot)">`;
+    for (const a of alts)
+      s += `<line x1="${X(0)}" y1="${Y(a.fc)}" x2="${X(xmax)}" y2="${Y(a.fc+a.vc*xmax)}" stroke="${color(a.idx)}" stroke-width="1.6" stroke-dasharray="5 4" opacity=".75"/>`;
+    const bounds = [0, ...res.q, Infinity];
+    res.lines.forEach((a,k) => {
+      const lo = bounds[k], hi = Math.min(bounds[k+1], xmax);
+      if (lo >= xmax) return;
+      s += `<line x1="${X(lo)}" y1="${Y(a.fc+a.vc*lo)}" x2="${X(hi)}" y2="${Y(a.fc+a.vc*hi)}" stroke="${color(a.idx)}" stroke-width="5" stroke-linecap="round"/>`;
+    });
+    s += `</g>`;
+
+    res.q.forEach((q,k) => {
+      const a = res.lines[k], c = a.fc + a.vc*q, off = k % 2 ? 30 : 14;
+      s += `<line x1="${X(q)}" y1="${Y(c)}" x2="${X(q)}" y2="${T+ph}" stroke="var(--ink)" stroke-dasharray="2 3" opacity=".7"/>`;
+      s += `<circle cx="${X(q)}" cy="${Y(c)}" r="5" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>`;
+      const end = X(q) > L+pw-90, dx = end ? -8 : 8;
+      s += `<text x="${X(q)+dx}" y="${Y(c)-off}" text-anchor="${end?"end":"start"}" font-size="12.5" font-weight="600" fill="var(--ink)" paint-order="stroke" stroke="var(--panel)" stroke-width="4">Q* = ${full(q)}</text>`;
+    });
+
+    const by = T+ph+50;
+    res.lines.forEach((a,k) => {
+      const lo = bounds[k], hi = Math.min(bounds[k+1], xmax);
+      if (lo >= xmax) return;
+      const w = X(hi)-X(lo);
+      s += `<rect x="${X(lo)}" y="${by}" width="${Math.max(w-1,1)}" height="22" rx="3" fill="${color(a.idx)}"/>`;
+      if (w > 64) s += `<text x="${X(lo)+w/2}" y="${by+15.5}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--panel)">${esc(a.name)}</text>`;
+    });
+
+    s += `<g id="hover" style="display:none"><line id="hl" y1="${T}" y2="${T+ph}" stroke="var(--accent)" stroke-width="1.2"/></g>`;
+    s += `<rect id="hit" x="${L}" y="${T}" width="${pw}" height="${ph}" fill="transparent"/>`;
+    $("chart").innerHTML = s;
+    chartCtx = {alts, L, pw, xmax, X};
+
+    const winners = new Set(res.lines.map(a => a.id));
+    $("legend").innerHTML = alts.map(a =>
+      `<span class="${winners.has(a.id)?"":"never"}"><span class="swatch" style="background:${color(a.idx)}"></span>${esc(a.name)}</span>`).join("");
+
+    const hit = $("hit");
+    hit.addEventListener("pointermove", hover);
+    hit.addEventListener("pointerdown", hover);
+    hit.addEventListener("pointerleave", () => { $("tip").style.display = "none"; $("hover").style.display = "none"; });
+  }
+
+  function hover(e){
+    if (!chartCtx) return;
+    const svg = $("chart"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const {alts, L, pw, xmax, X} = chartCtx;
+    const q = Math.max(0, Math.min(xmax, (p.x - L)/pw*xmax));
+    const hl = $("hl"); hl.setAttribute("x1", X(q)); hl.setAttribute("x2", X(q));
+    $("hover").style.display = "";
+    const costs = alts.map(a => ({a, c:a.fc + a.vc*q})).sort((x,y) => x.c - y.c);
+    const tip = $("tip");
+    tip.innerHTML = `<div class="q">${ltr(esc(t("tipQ",{q:full(Math.round(q)), u:""})).trim())} ${esc(unit())}</div>` +
+      costs.map((o,k) => `<div class="row${k===0?" best":""}"><span class="namecell"><span class="swatch" style="background:${color(o.a.idx)}"></span>${esc(o.a.name)}</span>${ltr(esc(cur()+short(o.c)))}</div>`).join("");
+    tip.style.display = "block";
+    const box = $("chartbox").getBoundingClientRect();
+    let left = e.clientX - box.left + 14;
+    if (left + tip.offsetWidth > box.width) left = e.clientX - box.left - tip.offsetWidth - 14;
+    tip.style.left = Math.max(0,left) + "px";
+    tip.style.top = Math.max(0, e.clientY - box.top - tip.offsetHeight/2) + "px";
+  }
+
+  // ---------- Results ----------
+  function drawResults(alts, res){
+    const bounds = [0, ...res.q, Infinity];
+    let h = `<thead><tr><th>${esc(t("altCol"))}</th><th class="num">${esc(t("from"))}</th><th class="num">${esc(t("to"))}</th></tr></thead><tbody>`;
+    res.lines.forEach((a,k) => {
+      h += `<tr><td><span class="namecell"><span class="swatch" style="background:${color(a.idx)}"></span>${esc(a.name)}</span></td>
+        <td class="num">${ltr(full(bounds[k]))}</td><td class="num">${bounds[k+1]===Infinity?esc(t("andAbove")):ltr(full(bounds[k+1]))}</td></tr>`;
+    });
+    $("ranges").innerHTML = h + "</tbody>";
+
+    $("qstar").innerHTML = res.q.map((q,k) => {
+      const a = res.lines[k], b = res.lines[k+1];
+      return `<li>${t("qLine",{a:esc(a.name), b:esc(b.name), q:full(q), u:esc(unit()), tc:esc(money(a.fc + a.vc*q))})}</li>`;
+    }).join("") || `<li>${esc(t("oneAlt"))}</li>`;
+
+    const winners = new Set(res.lines.map(a => a.id));
+    const never = alts.filter(a => !winners.has(a.id)).map(a => a.name);
+    $("never").textContent = never.length ? t("never",{list: never.join(lang === "ar" ? "، " : ", ")}) : t("everyWins");
+
+    $("trace").innerHTML = res.trace.map(s =>
+      `<li><span class="op${s.pop?" pop":""}">${esc(t(s.op))}</span> ${s.text}${s.stack?`<span class="stack">${esc(t("stack"))}: ${s.stack}</span>`:""}</li>`).join("");
+  }
+
+  const qp = new URLSearchParams(location.search).get("lang");
+  if (qp === "ar") lang = "ar";
+  rows = EXAMPLE.map(newRow);
+  $("unit").value = I18N[lang].exampleUnit;
+  applyLang();
+})();
+</script>
+</body>
+</html>
